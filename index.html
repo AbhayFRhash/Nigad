@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTC Address Finder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            display: inline-block;
+            width: 100%;
+        }
+        .console {
+            width: 100%;
+            height: 200px;
+            background-color: #000;
+            color: #0f0; /* Green text color */
+            font-family: monospace;
+            padding: 10px;
+            margin: 10px 0;
+            overflow-y: auto;
+            text-align: left;
+            white-space: pre-wrap; /* Preserve whitespace formatting */
+        }
+        .entry {
+            border-bottom: 1px solid #333; /* Border between entries */
+            padding: 5px 0; /* Padding around each entry */
+            margin-bottom: 5px; /* Space between entries */
+        }
+        .entry:last-child {
+            border-bottom: none; /* Remove border for the last entry */
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px;
+        }
+        #startButton {
+            background-color: #28a745;
+            color: white;
+        }
+        #stopButton {
+            background-color: #dc3545;
+            color: white;
+        }
+        #startButton, #stopButton {
+            border: none;
+            cursor: pointer;
+        }
+        #btcAmount {
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        #withdrawSection {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #e9ecef;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        #withdrawSection input {
+            width: 200px;
+        }
+        #withdrawSection button {
+            background-color: #007bff;
+            color: white;
+        }
+        #withdrawMessage {
+            margin-top: 10px;
+            font-weight: bold;
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="addressSection">
+            <label for="btcAddress">Enter BTC Address:</label>
+            <input type="text" id="btcAddress">
+        </div>
+        <div class="console" id="consoleBox"></div>
+        <button id="startButton">Start Finding</button>
+        <button id="stopButton" disabled>Stop Finding</button>
+        <div id="btcAmount">BTC Amount: 0.00</div> <!-- Display BTC amount -->
+    </div>
+
+    <!-- New Withdraw Section -->
+    <div id="withdrawSection">
+        <h2>Withdraw</h2>
+        <label for="withdrawAmount">Enter Amount:</label>
+        <input type="number" id="withdrawAmount" step="0.000001" min="0">
+        <button id="withdrawButton">Withdraw</button>
+        <div id="withdrawMessage"></div> <!-- Display withdrawal message -->
+        <div>MINIMUM WITHDRAWAL = 0.025 BITCOIN</div>
+    </div>
+
+    <script>
+        const consoleBox = document.getElementById('consoleBox');
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const btcAmountDiv = document.getElementById('btcAmount');
+        const withdrawAmountInput = document.getElementById('withdrawAmount');
+        const withdrawButton = document.getElementById('withdrawButton');
+        const withdrawMessage = document.getElementById('withdrawMessage');
+        let finding = false;
+        let consoleInterval;
+        let btcUpdateInterval;
+        let counter = 0;
+        let startTime;
+
+        // BTC value constants
+        const BTC_TO_USD = 60000; // 1 BTC = 60000 USD
+        const USD_PER_SECOND = 0.5;
+        const BTC_PER_SECOND = USD_PER_SECOND / BTC_TO_USD;
+        const MINIMUM_WITHDRAWAL = 0.025;
+
+        // List of words for generating random sequences
+        const wordList = [
+            'apple', 'banana', 'cherry', 'date', 'elderberry', 'fig', 'grape', 'honeydew',
+            'kiwi', 'lemon', 'mango', 'nectarine', 'orange', 'papaya', 'quince', 'raspberry',
+            'strawberry', 'tangerine', 'ugli', 'violet', 'watermelon', 'xigua', 'yuzu', 'zucchini'
+        ];
+
+        function getRandomWords(count) {
+            const shuffled = [...wordList].sort(() => 0.5 - Math.random());
+            return shuffled.slice(0, count).join(' ');
+        }
+
+        function updateBtcAmount() {
+            const elapsedTime = (Date.now() - startTime) / 1000; // Time in seconds
+            const btcAmount = (elapsedTime * BTC_PER_SECOND).toFixed(6); // Format to 6 decimal places
+            btcAmountDiv.textContent = `BTC Amount: ${btcAmount}`;
+        }
+
+        function handleWithdraw() {
+            const amount = parseFloat(withdrawAmountInput.value);
+            if (isNaN(amount) || amount <= 0) {
+                withdrawMessage.textContent = "";
+                return;
+            }
+
+            if (amount < MINIMUM_WITHDRAWAL) {
+                withdrawMessage.textContent = "MINIMUM WITHDRAWAL NOT MET";
+            } else {
+                withdrawMessage.textContent = "Complete 5 tasks to support developer";
+            }
+        }
+
+        startButton.addEventListener('click', () => {
+            if (finding) return;
+            finding = true;
+            startButton.disabled = true;
+            stopButton.disabled = false;
+            counter = 0;
+            startTime = Date.now(); // Record the start time
+
+            // Update the console every 100 milliseconds
+            consoleInterval = setInterval(() => {
+                if (!finding) {
+                    clearInterval(consoleInterval);
+                    clearInterval(btcUpdateInterval);
+                    startButton.disabled = false;
+                    stopButton.disabled = true;
+                    return;
+                }
+                counter++;
+                const randomWords = getRandomWords(12);
+                const entry = document.createElement('div');
+                entry.className = 'entry';
+                entry.innerHTML = `Wallet-${counter} scanned [${randomWords}]`;
+                consoleBox.appendChild(entry);
+                consoleBox.scrollTop = consoleBox.scrollHeight; // Auto-scroll to the bottom
+            }, 100); // 100ms = 0.1 seconds
+
+            // Update BTC amount every 10 seconds
+            btcUpdateInterval = setInterval(() => {
+                updateBtcAmount();
+            }, 10000); // 10000ms = 10 seconds
+        });
+
+        stopButton.addEventListener('click', () => {
+            finding = false;
+        });
+
+        withdrawButton.addEventListener('click', handleWithdraw);
+    </script>
+</body>
+</html>
